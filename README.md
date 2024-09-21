@@ -47,6 +47,7 @@ for _, item := range slice1 {
 - Nil-safe. All of the functions will happily accept nil and treat them as empty slices. Apart from less possible panics, it makes it easier to chain.
 
 - Immutable. Functions never modify inputs (except in cases where it would be illogical), unlike some built-ins such as sort.Strings
+   todo  ???现在能做到Immutable吗？
 
 ## quick start
 
@@ -55,8 +56,11 @@ for _, item := range slice1 {
 
 ### roadmap
 - [ ] add `where` function
+- [ ] 添加where函数可以串联起来的优化
+- [ ] 添加多goruntine支持以优化性能
 - [ ] add more test
 - [ ] add more 入参 limit ，保证安全 ，like gorm
+- [ ] 考虑where和tranfer的返回参数增加一个error用以支持类型转换过程中的错误之类的
 
 ### 贡献指南
 

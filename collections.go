@@ -6,14 +6,25 @@ import (
 )
 
 var (
-	TypeNotSupported = fmt.Errorf(" type is not supported")
-	GetValueError    = fmt.Errorf("get value error")
+	TypeNotSupported      = fmt.Errorf(" type is not supported")
+	GetValueError         = fmt.Errorf("get value error")
+	WhereTypeNotSameError = fmt.Errorf("where type not same")
 )
 
 type Collection struct {
 	InnerSlice          any
 	ReflectValueOfInner reflect.Value
 	Error               error
+}
+
+func NewCollection(array any) *Collection {
+	var err error = nil
+	//todo 检查入参是否是array
+	return &Collection{
+		InnerSlice:          array,
+		ReflectValueOfInner: reflect.ValueOf(array),
+		Error:               err,
+	}
 }
 
 func (c *Collection) Get(dest any) {
@@ -46,25 +57,6 @@ func (c *Collection) Get(dest any) {
 	reflect.ValueOf(dest).Elem().Set(reflectValueOfDest)
 }
 
-func NewCollection(array any) *Collection {
-	var err error = nil
-	//if len(array) > 0 {
-	//	reflectValue := reflect.ValueOf(array[0])
-	//	switch reflectValue.Kind() {
-	//	case reflect.Slice, reflect.Array: //todo add more type
-	//		err = TypeNotSupported
-	//	default:
-	//
-	//	}
-	//
-	//}
-	return &Collection{
-		InnerSlice:          array,
-		ReflectValueOfInner: reflect.ValueOf(array),
-		Error:               err,
-	}
-}
-
 // transfer
 //
 //	@Description: 对保存的元素逐个进行transFunc
@@ -77,12 +69,14 @@ func (c *Collection) transfer(transFunc func(in any) (out any)) *Collection {
 	}
 	oldReflectValueOfInner := c.ReflectValueOfInner
 	//oldInnerSlice := c.InnerSlice
-	//outType, err := GetReturnType(transFunc) 失败的方案1:因为这个func就是返回的any，所以虽然用了反射，但是依然获取不到类型
+	//outType, err := GetReturnType(transFunc) 失败的方案1:因为这个func就是返回的any，所以虽然用了反射，但是依然获取不到类型，什么都打印不出来
 	//
 	//if err != nil {
 	//	c.Error = err
 	//	return c
 	//}
+	// todo 如果出现传入参数和inner参数不一致的情况，会发生runtime panic？或许还是需要尝试下怎么在真正transfer之前揭开in到底是一个什么type
+
 	outType := reflect.TypeOf(transFunc(oldReflectValueOfInner.Index(0).Interface()))
 	fmt.Printf("transfer Output Type:%s\n", outType.Name())
 
@@ -94,6 +88,34 @@ func (c *Collection) transfer(transFunc func(in any) (out any)) *Collection {
 		valueOf := reflect.ValueOf(newElem)
 		//fmt.Println(reflect.TypeOf(newElem).Name())
 		c.ReflectValueOfInner.Index(i).Set(valueOf)
+	}
+	return c
+}
+
+// where
+//
+//	@Description: 只保留符合where判断条件的元素
+//	@receiver c
+//	@param transFunc
+//	@return *Collection
+func (c *Collection) where(whereFunc func(in any) bool) *Collection {
+	if c.Error != nil || c.ReflectValueOfInner.Len() <= 0 {
+		return c
+	}
+	// todo ： add 输入类型检查以避免运行时错误
+	//InnerType := c.ReflectValueOfInner.Index(0).Type()
+	//fmt.Printf("where InnerType :%s\n", InnerType.Name())
+	//if InnerType != reflect.TypeOf(in) {
+	//	c.Error = TypeNotSupported
+	//	return c
+	//}
+	oldReflectValueOfInner := c.ReflectValueOfInner
+	c.ReflectValueOfInner = reflect.MakeSlice(c.ReflectValueOfInner.Type(), 0, oldReflectValueOfInner.Len())
+
+	for i := 0; i < oldReflectValueOfInner.Len(); i++ {
+		if whereFunc(oldReflectValueOfInner.Index(i).Interface()) {
+			c.ReflectValueOfInner = reflect.Append(c.ReflectValueOfInner, oldReflectValueOfInner.Index(i))
+		}
 	}
 	return c
 }
